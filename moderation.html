@@ -25,7 +25,7 @@
   </section>
 </main>
 <script>
-const $ = (id) => document.getElementById(id), { h, RAR } = WM;
+const $ = (id) => document.getElementById(id), { h, RAR, CATS } = WM;
 let view = "pending";
 
 function setView(v) {
@@ -39,7 +39,7 @@ $("tabA").onclick = () => setView("approved");
 $("out").onclick = () => { try { localStorage.removeItem("wm_s"); } catch {} location.reload(); };
 
 async function load() {
-  $("list").textContent = ""; $("msg").textContent = "Chargement…";
+  $("list").textContent = ""; $("msg").style.color = ""; $("msg").textContent = "Chargement…";
   try {
     const rows = await WM.json("/rest/v1/cards?select=*&approved=eq." + (view === "pending") + "&order=created_at.asc");
     $("msg").textContent = rows.length ? "" : (view === "pending" ? "Aucune carte en attente." : "Aucune carte validée.");
@@ -48,15 +48,21 @@ async function load() {
 }
 
 function add(c) {
-  const w = h("div"), sel = h("select"), acts = h("div", "acts");
-  Object.entries(RAR).forEach(([k, v]) => sel.append(new Option(v[0], k, false, k === c.rarity)));
-  sel.ariaLabel = "Rareté";
-  const JSONH = { "Content-Type": "application/json", Prefer: "return=representation" };
+  const w = h("div"), acts = h("div", "acts"), det = h("details"), form = h("div", "box");
+  form.style.maxWidth = "none";
+  const nm = h("input"), ds = h("textarea"), ct = h("select"), rr = h("select"), fl = h("input");
+  nm.value = c.name; nm.maxLength = 40; nm.ariaLabel = "Nom";
+  ds.value = c.description; ds.maxLength = 300; ds.rows = 3; ds.ariaLabel = "Description";
+  Object.entries(CATS).forEach(([k, v]) => ct.append(new Option(v, k, false, k === c.category))); ct.ariaLabel = "Catégorie";
+  Object.entries(RAR).forEach(([k, v]) => rr.append(new Option(v[0], k, false, k === c.rarity))); rr.ariaLabel = "Rareté";
+  fl.type = "file"; fl.accept = "image/*"; fl.ariaLabel = "Nouvelle photo";
+  const fields = () => ({ name: nm.value.trim(), description: ds.value.trim(), category: ct.value, rarity: rr.value });
+
   const run = (fn) => async () => { try { await fn(); } catch (e) { $("msg").style.color = "#ff8f86"; $("msg").textContent = "Échec : " + e.message; } };
+  const btn = (t, cls, fn) => { const b = h("button", cls, t); b.type = "button"; b.onclick = run(fn); return b; };
   const patch = async (body) => {
-    const r = await WM.json("/rest/v1/cards?id=eq." + c.id, { method: "PATCH", headers: JSONH, body: JSON.stringify(body) });
+    const r = await WM.json("/rest/v1/cards?id=eq." + c.id, { method: "PATCH", headers: { "Content-Type": "application/json", Prefer: "return=representation" }, body: JSON.stringify(body) });
     if (!r.length) throw new Error("aucune ligne modifiée (wikimaster.sql exécuté avec la bonne adresse e-mail ?)");
-    $("msg").style.color = "#7fe0ae"; $("msg").textContent = "Enregistré.";
   };
   const del = async () => {
     if (!confirm("Supprimer définitivement cette carte ?")) return;
@@ -65,13 +71,27 @@ function add(c) {
     await WM.api("/storage/v1/object/cards/" + encodeURIComponent(c.path), { method: "DELETE" });
     w.remove();
   };
-  const btn = (t, cls, fn) => { const b = h("button", cls, t); b.type = "button"; b.onclick = run(fn); return b; };
+  // Enregistre les champs, et remplace la photo si une nouvelle a été choisie
+  const save = async (extra) => {
+    const body = { ...fields(), ...extra }; let old = null;
+    if (fl.files[0]) {
+      const blob = await WM.compress(fl.files[0]), path = crypto.randomUUID() + ".jpg";
+      const r = await WM.api("/storage/v1/object/cards/" + path, { method: "POST", headers: { "Content-Type": "image/jpeg" }, body: blob });
+      if (!r.ok) throw new Error("envoi de la photo refusé (" + r.status + ")");
+      old = c.path; body.path = path;
+    }
+    await patch(body);
+    if (old) await WM.api("/storage/v1/object/cards/" + encodeURIComponent(old), { method: "DELETE" });
+  };
 
-  if (view === "pending") acts.append(btn("Valider", "good", async () => { await patch({ approved: true, rarity: sel.value }); w.remove(); }), btn("Refuser", "bad", del));
-  else acts.append(btn("Enregistrer la rareté", "", () => patch({ rarity: sel.value })), btn("Retirer", "bad", del));
+  form.append(nm, ds, ct, rr, h("small", "", "Nouvelle photo (facultatif)"), fl,
+    btn("Enregistrer les modifications", "", async () => { await save({}); await load(); $("msg").style.color = "#7fe0ae"; $("msg").textContent = "Carte mise à jour."; }));
+  det.append(h("summary", "", "Modifier cette carte"), form);
 
-  w.append(WM.cardEl(c), h("label", "", "Rareté"), sel, acts);
-  w.querySelector("label").append(); // le libellé est lu avec le menu juste en dessous
+  if (view === "pending") acts.append(btn("Valider", "good", async () => { await save({ approved: true }); await load(); }), btn("Refuser", "bad", del));
+  else acts.append(btn("Retirer du jeu", "bad", del));
+
+  w.append(WM.cardEl(c), det, acts);
   $("list").append(w);
 }
 
