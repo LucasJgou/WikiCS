@@ -99,7 +99,7 @@ function init() {
   $("auth").textContent = "";
   const logged = !!WM.user();
   $("panel").hidden = !logged;
-  if (logged) load(); else $("auth").append(WM.authBox(init, true));
+  if (logged) { $("out").textContent = "Se déconnecter (" + WM.user().email + ")"; load(); } else $("auth").append(WM.authBox(init, true));
 }
 init();
 </script>
