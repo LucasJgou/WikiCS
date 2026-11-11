@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Modération – Wikimaster CentraleSupélec</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<script src="config.js"></script>
+<script src="wm.js"></script>
+</head>
+<body>
+<main>
+  <a href="index.html">Retour au jeu</a>
+  <h1>Modération des cartes</h1>
+  <p class="msg" id="msg" role="status" aria-live="polite"></p>
+  <div id="auth"></div>
+  <section id="panel" hidden>
+    <div class="acts" style="margin:0 0 1rem">
+      <button id="tabP" type="button">En attente</button>
+      <button id="tabA" class="ghost" type="button">Validées</button>
+      <button id="out" class="ghost" type="button">Se déconnecter</button>
+    </div>
+    <div class="grid" id="list"></div>
+  </section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id), { h, RAR } = WM;
+let view = "pending";
+
+function setView(v) {
+  view = v;
+  $("tabP").className = v === "pending" ? "" : "ghost";
+  $("tabA").className = v === "approved" ? "" : "ghost";
+  load();
+}
+$("tabP").onclick = () => setView("pending");
+$("tabA").onclick = () => setView("approved");
+$("out").onclick = () => { try { localStorage.removeItem("wm_s"); } catch {} location.reload(); };
+
+async function load() {
+  $("list").textContent = ""; $("msg").textContent = "Chargement…";
+  try {
+    const rows = await WM.json("/rest/v1/cards?select=*&approved=eq." + (view === "pending") + "&order=created_at.asc");
+    $("msg").textContent = rows.length ? "" : (view === "pending" ? "Aucune carte en attente." : "Aucune carte validée.");
+    rows.forEach(add);
+  } catch (e) { $("msg").textContent = "Chargement impossible : " + e.message; }
+}
+
+function add(c) {
+  const w = h("div"), sel = h("select"), acts = h("div", "acts");
+  Object.entries(RAR).forEach(([k, v]) => sel.append(new Option(v[0], k, false, k === c.rarity)));
+  sel.ariaLabel = "Rareté";
+  const JSONH = { "Content-Type": "application/json", Prefer: "return=representation" };
+  const run = (fn) => async () => { try { await fn(); } catch (e) { $("msg").style.color = "#ff8f86"; $("msg").textContent = "Échec : " + e.message; } };
+  const patch = async (body) => {
+    const r = await WM.json("/rest/v1/cards?id=eq." + c.id, { method: "PATCH", headers: JSONH, body: JSON.stringify(body) });
+    if (!r.length) throw new Error("aucune ligne modifiée (wikimaster.sql exécuté avec la bonne adresse e-mail ?)");
+    $("msg").style.color = "#7fe0ae"; $("msg").textContent = "Enregistré.";
+  };
+  const del = async () => {
+    if (!confirm("Supprimer définitivement cette carte ?")) return;
+    const r = await WM.json("/rest/v1/cards?id=eq." + c.id, { method: "DELETE", headers: { Prefer: "return=representation" } });
+    if (!r.length) throw new Error("aucune ligne supprimée");
+    await WM.api("/storage/v1/object/cards/" + encodeURIComponent(c.path), { method: "DELETE" });
+    w.remove();
+  };
+  const btn = (t, cls, fn) => { const b = h("button", cls, t); b.type = "button"; b.onclick = run(fn); return b; };
+
+  if (view === "pending") acts.append(btn("Valider", "good", async () => { await patch({ approved: true, rarity: sel.value }); w.remove(); }), btn("Refuser", "bad", del));
+  else acts.append(btn("Enregistrer la rareté", "", () => patch({ rarity: sel.value })), btn("Retirer", "bad", del));
+
+  w.append(WM.cardEl(c), h("label", "", "Rareté"), sel, acts);
+  w.querySelector("label").append(); // le libellé est lu avec le menu juste en dessous
+  $("list").append(w);
+}
+
+function init() {
+  $("auth").textContent = "";
+  const logged = !!WM.user();
+  $("panel").hidden = !logged;
+  if (logged) load(); else $("auth").append(WM.authBox(init, true));
+}
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Wikimaster CentraleSupélec</title>
+<meta name="description" content="Gagne des jetons sur CSguessr, ouvre des boosters et collectionne les cartes du campus de CentraleSupélec.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<script src="config.js"></script>
+<script src="wm.js"></script>
+<style>
+  .pack{margin:.5rem auto;height:260px}
+  .slot{width:min(240px,100%);margin:.5rem auto}
+  .slot .flip{min-height:340px}
+  .count{text-align:center;font-weight:600;color:#c3cec9;min-height:1.4em;margin:.5rem 0 0}
+  .center{justify-content:center}
+  .big .wc{animation:pulse 1.2s ease-in-out infinite}
+  @keyframes pulse{50%{box-shadow:0 0 44px var(--rc)}}
+  @media (prefers-reduced-motion:reduce){.big .wc{animation:none}}
+</style>
+</head>
+<body>
+<main>
+  <div id="top"></div>
+  <div id="intro">
+    <h1>Wikimaster</h1>
+    <p class="lead">Gagne des jetons en jouant à CSguessr, puis ouvre des boosters pour collectionner les cartes du campus.</p>
+  </div>
+  <div class="note" id="demo" hidden>
+    Mode aperçu : ces cartes sont inventées et rien n’est enregistré en ligne.
+    <button class="ghost" id="reset" type="button">Remettre 100 jetons</button>
+  </div>
+  <div id="auth"></div>
+  <section id="stage">
+    <button class="pack" id="pack" type="button">Wikimaster<small>Booster · 30 jetons</small></button>
+    <div class="slot" id="slot" hidden></div>
+    <p class="count" id="count" aria-live="polite"></p>
+    <div class="acts center">
+      <button id="next" type="button" hidden>Suivant</button>
+      <button id="again" type="button" hidden>Ouvrir un autre booster</button>
+    </div>
+    <p class="msg" id="msg" role="status" aria-live="polite" style="text-align:center"></p>
+  </section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id), { h, ORDER } = WM;
+let busy = false, hand = [], idx = 0, before = {}, seen = {};
+const SUSPENSE = { commune: 250, peu_commune: 350, rare: 600, epique: 900, legendaire: 1300 };
+
+async function init() {
+  const p = await WM.header($("top"));
+  $("demo").hidden = !WM.demo();
+  $("auth").textContent = "";
+  const need = !WM.demo() && !p;
+  $("stage").hidden = need;
+  if (need) $("auth").append(WM.authBox(init));
+}
+
+// Une carte à la fois, de la moins rare à la plus rare : la meilleure arrive en dernier
+function showCard() {
+  const c = hand[idx], last = idx === hand.length - 1;
+  const f = h("div", "flip" + (c.rarity === "epique" || c.rarity === "legendaire" ? " big" : ""));
+  const front = h("div", "front"); front.append(WM.cardEl(c));
+  if (!before[c.id] && !seen[c.id]) front.append(h("i", "new", "Nouvelle"));
+  seen[c.id] = 1;
+  f.append(h("div", "back", "?"), front);
+  $("slot").textContent = ""; $("slot").append(f);
+  $("count").textContent = (idx + 1) + " / " + hand.length;
+  $("next").hidden = last; $("again").hidden = !last;
+  $("next").disabled = true;
+  setTimeout(() => {
+    f.classList.add("on");
+    setTimeout(() => { $("next").disabled = false; if (!last) $("next").focus(); }, 500);
+  }, SUSPENSE[c.rarity] || 300);
+  if (last) $("again").focus();
+}
+
+$("pack").onclick = async () => {
+  if (busy) return; busy = true; $("msg").textContent = "";
+  try {
+    before = await WM.owned(); seen = {};
+    $("pack").classList.add("shake");
+    const [got] = await Promise.all([WM.open(), new Promise((r) => setTimeout(r, 900))]);
+    hand = got.slice().sort((a, b) => ORDER.indexOf(b.rarity) - ORDER.indexOf(a.rarity));
+    idx = 0;
+    $("intro").hidden = true; $("pack").hidden = true; $("slot").hidden = false;
+    showCard();
+  } catch (e) {
+    $("msg").textContent = /jetons/.test(e.message) ? "Pas assez de jetons : gagne-en en jouant à CSguessr." : "Erreur : " + e.message;
+  }
+  $("pack").classList.remove("shake");
+  busy = false;
+  WM.header($("top"));
+};
+
+$("next").onclick = () => { if (idx < hand.length - 1) { idx++; showCard(); } };
+$("slot").onclick = () => { if (!$("next").hidden && !$("next").disabled) $("next").click(); };
+$("again").onclick = () => {
+  $("slot").hidden = true; $("slot").textContent = ""; $("count").textContent = "";
+  $("again").hidden = true; $("pack").hidden = false; $("pack").focus();
+};
+$("reset").onclick = () => { try { localStorage.removeItem("wm_demo"); } catch {} location.reload(); };
+init();
+</script>
+</body>
+</html>

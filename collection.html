@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ma collection – Wikimaster CentraleSupélec</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<script src="config.js"></script>
+<script src="wm.js"></script>
+</head>
+<body>
+<main>
+  <div id="top"></div>
+  <h1>Ma collection</h1>
+  <p class="lead" id="count"></p>
+  <div id="auth"></div>
+  <div id="content" hidden>
+    <label style="max-width:240px;margin-bottom:1rem">Rareté
+      <select id="f"><option value="">Toutes</option></select>
+    </label>
+    <div class="grid" id="grid"></div>
+  </div>
+</main>
+<script>
+const $ = (id) => document.getElementById(id), { h, RAR, ORDER } = WM;
+let cards = [], own = {};
+ORDER.forEach((k) => $("f").append(new Option(RAR[k][0], k)));
+
+function draw() {
+  const grid = $("grid"); grid.textContent = "";
+  cards.filter((c) => !$("f").value || c.rarity === $("f").value)
+    .sort((a, b) => ORDER.indexOf(a.rarity) - ORDER.indexOf(b.rarity) || a.name.localeCompare(b.name))
+    .forEach((c) => {
+      if (own[c.id]) return grid.append(WM.cardEl(c, own[c.id]));
+      const g = h("div", "wc lock"); g.style.setProperty("--rc", RAR[c.rarity][1]);
+      g.append(h("span", "emo", "?"), h("h3", "", "Carte inconnue"), h("span", "rar", RAR[c.rarity][0]));
+      grid.append(g);
+    });
+}
+
+async function init() {
+  const p = await WM.header($("top"));
+  cards = await WM.loadCards();
+  $("auth").textContent = "";
+  if (!WM.demo() && !p) { $("content").hidden = true; $("count").textContent = ""; $("auth").append(WM.authBox(init)); return; }
+  own = await WM.owned();
+  const n = cards.filter((c) => own[c.id]).length;
+  $("count").textContent = n + " carte" + (n > 1 ? "s" : "") + " sur " + cards.length + " découverte" + (n > 1 ? "s" : "") + ".";
+  $("content").hidden = false;
+  draw();
+}
+$("f").onchange = draw;
+init();
+</script>
+</body>
+</html>
