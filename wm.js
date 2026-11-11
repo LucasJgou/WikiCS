@@ -6,10 +6,11 @@ const WM = (() => {
   const ORDER = ["legendaire", "epique", "rare", "peu_commune", "commune"];
   const CATS = { lieu: "Lieu", salle: "Salle", asso: "Asso", evenement: "Événement", tradition: "Tradition", autre: "Autre" };
   const COST = 30;
- 
+  const CAT_EMO = { lieu: "📍", salle: "🏫", asso: "🤝", evenement: "🎉", tradition: "🎭", autre: "✨" };
+
   // ---------- Petits outils ----------
   const h = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
- 
+
   const css = `
 :root{--ink:#10252d;--paper:#f5f6f2;--line:#c9d0cb;--signal:#f0b429;--good:#2f9e6b;--bad:#d2493f;--font:"Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",sans-serif}
 *{box-sizing:border-box}
@@ -61,13 +62,13 @@ button:disabled{opacity:.5;cursor:not-allowed}
 @media (prefers-reduced-motion:reduce){.shake{animation:none}.flip .back,.flip .front{transition:none}}`;
   document.head.append(Object.assign(h("style"), { textContent: css }));
   document.head.append(Object.assign(h("link"), { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" }));
- 
+
   // ---------- Compte ----------
   let S = null; try { S = JSON.parse(localStorage.getItem("wm_s")); } catch {}
   const save = (s) => { S = s; try { s ? localStorage.setItem("wm_s", JSON.stringify(s)) : localStorage.removeItem("wm_s"); } catch {} };
   const mail = (id) => id.includes("@") ? id.trim() : id.trim().toLowerCase() + "@users.wikimaster.app";
   const keep = (j) => save({ token: j.access_token, refresh: j.refresh_token, exp: Date.now() + (j.expires_in || 3600) * 1000 - 60000, id: j.user.id, email: j.user.email });
- 
+
   async function auth(path, body) {
     const r = await fetch(root + "/auth/v1/" + path, { method: "POST", headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const j = await r.json();
@@ -95,7 +96,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
     if (!r.ok) { let t = ""; try { t = (await r.text()).slice(0, 160); } catch {} throw new Error("HTTP " + r.status + " " + t); }
     return r.status === 204 ? null : r.json();
   }
- 
+
   function authBox(done, admin) {
     const f = h("form", "box"), id = h("input"), pw = h("input"), msg = h("p", "msg");
     id.placeholder = id.ariaLabel = admin ? "E-mail admin" : "Pseudo"; id.required = true; id.autocomplete = "username";
@@ -112,7 +113,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
     f.append(msg);
     return f;
   }
- 
+
   // ---------- Cartes ----------
   let cards = null;
   async function loadCards() {
@@ -121,18 +122,18 @@ button:disabled{opacity:.5;cursor:not-allowed}
     catch { cards = []; }
     return cards;
   }
- 
+
   function cardEl(c, qty) {
     const d = h("div", "wc"); d.style.setProperty("--rc", RAR[c.rarity][1]);
     const art = h("div", "art");
     if (c.path || c.url) { const i = h("img"); i.src = c.url || root + "/storage/v1/object/public/cards/" + c.path; i.alt = ""; i.loading = "lazy"; art.append(i); }
-    else art.append(h("span", "emo", c.emoji || "❔"));
+    else art.append(h("span", "emo", c.emoji || CAT_EMO[c.category] || "❔"));
     const meta = h("div", "meta"); meta.append(h("span", "", CATS[c.category] || ""), h("span", "rar", RAR[c.rarity][0]));
     d.append(art, h("h3", "", c.name), meta, h("p", "", c.description));
     if (qty > 1) d.append(h("b", "qty", "×" + qty));
     return d;
   }
- 
+
   // ---------- Jetons, collection, booster (tout est calculé côté serveur) ----------
   async function me() {
     if (!S) return null;
@@ -144,7 +145,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
     return m;
   }
   const open = () => json("/rest/v1/rpc/open_booster", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
- 
+
   // Réduit une photo à 1200 px max et la ré-encode en JPEG (retire aussi les données EXIF)
   async function compress(file) {
     const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
@@ -158,7 +159,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
       q = Math.max(0.5, q - 0.1); k *= 0.85;
     }
   }
- 
+
   // ---------- Barre du haut ----------
   async function header(el) {
     await loadCards();
@@ -172,6 +173,6 @@ button:disabled{opacity:.5;cursor:not-allowed}
     if (S) { const b = h("button", "ghost", "Quitter"); b.onclick = () => { save(null); location.reload(); }; el.append(b); }
     return p;
   }
- 
+
   return { h, RAR, ORDER, CATS, COST, loadCards, compress, header, authBox, cardEl, owned, open, user: () => S, api, json, login };
 })();
