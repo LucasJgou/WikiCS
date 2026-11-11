@@ -26,13 +26,10 @@
     <h1>Wikimaster</h1>
     <p class="lead">Gagne des jetons en jouant à CSguessr, puis ouvre des boosters pour collectionner les cartes du campus.</p>
   </div>
-  <div class="note" id="demo" hidden>
-    Mode aperçu : ces cartes sont inventées et rien n’est enregistré en ligne.
-    <button class="ghost" id="reset" type="button">Remettre 100 jetons</button>
-  </div>
   <div id="auth"></div>
-  <section id="stage">
+  <section id="stage" hidden>
     <button class="pack" id="pack" type="button">Wikimaster<small>Booster · 30 jetons</small></button>
+    <p class="count" id="bal"></p>
     <div class="slot" id="slot" hidden></div>
     <p class="count" id="count" aria-live="polite"></p>
     <div class="acts center">
@@ -47,13 +44,21 @@ const $ = (id) => document.getElementById(id), { h, ORDER } = WM;
 let busy = false, hand = [], idx = 0, before = {}, seen = {};
 const SUSPENSE = { commune: 250, peu_commune: 350, rare: 600, epique: 900, legendaire: 1300 };
 
-async function init() {
+// Vérifie la connexion, affiche les jetons et active (ou non) le booster
+async function refresh() {
   const p = await WM.header($("top"));
-  $("demo").hidden = !WM.demo();
   $("auth").textContent = "";
-  const need = !WM.demo() && !p;
-  $("stage").hidden = need;
-  if (need) $("auth").append(WM.authBox(init));
+  $("stage").hidden = !p;
+  if (!p) {
+    if (WM.user()) $("auth").append(h("p", "note", "Ce compte n’a pas de profil de joueur (compte admin ?). Clique sur Quitter, puis crée un compte avec un pseudo."));
+    else $("auth").append(WM.authBox(refresh));
+    return;
+  }
+  const cards = await WM.loadCards();
+  $("pack").disabled = p.tokens < WM.COST || !cards.length;
+  $("bal").textContent = !cards.length ? "Aucune carte n’a encore été validée. Reviens bientôt !"
+    : p.tokens < WM.COST ? "Il te manque " + (WM.COST - p.tokens) + " jetons : gagne-en en jouant à CSguessr."
+    : "Tu as " + p.tokens + " jetons.";
 }
 
 // Une carte à la fois, de la moins rare à la plus rare : la meilleure arrive en dernier
@@ -83,24 +88,23 @@ $("pack").onclick = async () => {
     const [got] = await Promise.all([WM.open(), new Promise((r) => setTimeout(r, 900))]);
     hand = got.slice().sort((a, b) => ORDER.indexOf(b.rarity) - ORDER.indexOf(a.rarity));
     idx = 0;
-    $("intro").hidden = true; $("pack").hidden = true; $("slot").hidden = false;
+    $("intro").hidden = true; $("pack").hidden = true; $("bal").hidden = true; $("slot").hidden = false;
     showCard();
   } catch (e) {
     $("msg").textContent = /jetons/.test(e.message) ? "Pas assez de jetons : gagne-en en jouant à CSguessr." : "Erreur : " + e.message;
   }
   $("pack").classList.remove("shake");
   busy = false;
-  WM.header($("top"));
+  refresh();
 };
 
 $("next").onclick = () => { if (idx < hand.length - 1) { idx++; showCard(); } };
 $("slot").onclick = () => { if (!$("next").hidden && !$("next").disabled) $("next").click(); };
 $("again").onclick = () => {
   $("slot").hidden = true; $("slot").textContent = ""; $("count").textContent = "";
-  $("again").hidden = true; $("pack").hidden = false; $("pack").focus();
+  $("again").hidden = true; $("pack").hidden = false; $("bal").hidden = false; $("pack").focus();
 };
-$("reset").onclick = () => { try { localStorage.removeItem("wm_demo"); } catch {} location.reload(); };
-init();
+refresh();
 </script>
 </body>
 </html>
