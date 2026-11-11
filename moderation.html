@@ -41,7 +41,7 @@ $("out").onclick = () => { try { localStorage.removeItem("wm_s"); } catch {} loc
 async function load() {
   $("list").textContent = ""; $("msg").style.color = ""; $("msg").textContent = "Chargement…";
   try {
-    const rows = await WM.json("/rest/v1/cards?select=*&approved=eq." + (view === "pending") + "&order=created_at.asc");
+    const rows = await WM.json("/rest/v1/cards?select=*&approved=eq." + (view === "approved") + "&order=created_at.asc");
     $("msg").textContent = rows.length ? "" : (view === "pending" ? "Aucune carte en attente." : "Aucune carte validée.");
     rows.forEach(add);
   } catch (e) { $("msg").textContent = "Chargement impossible : " + e.message; }
