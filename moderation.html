@@ -68,7 +68,7 @@ function add(c) {
     if (!confirm("Supprimer définitivement cette carte ?")) return;
     const r = await WM.json("/rest/v1/cards?id=eq." + c.id, { method: "DELETE", headers: { Prefer: "return=representation" } });
     if (!r.length) throw new Error("aucune ligne supprimée");
-    await WM.api("/storage/v1/object/cards/" + encodeURIComponent(c.path), { method: "DELETE" });
+    if (c.path) await WM.api("/storage/v1/object/cards/" + encodeURIComponent(c.path), { method: "DELETE" });
     w.remove();
   };
   // Enregistre les champs, et remplace la photo si une nouvelle a été choisie
