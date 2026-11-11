@@ -1,33 +1,15 @@
 // Outils partagés par toutes les pages Wikimaster : comptes, cartes, booster, style.
-// Tant qu'aucune carte n'est validée dans Supabase, le site tourne en « mode aperçu » avec des cartes inventées.
 const WM = (() => {
   const ok = typeof SUPABASE_URL === "string" && typeof SUPABASE_KEY === "string" && !SUPABASE_URL.includes("VOTRE-PROJET");
   const root = ok ? SUPABASE_URL.replace(/\/$/, "") : "";
   const RAR = { commune: ["Commune", "#8aa0a8"], peu_commune: ["Peu commune", "#2f9e6b"], rare: ["Rare", "#3b82d6"], epique: ["Épique", "#9b59d0"], legendaire: ["Légendaire", "#f0b429"] };
   const ORDER = ["legendaire", "epique", "rare", "peu_commune", "commune"];
-  const CHANCE = { commune: 60, peu_commune: 25, rare: 10, epique: 4, legendaire: 1 };
   const CATS = { lieu: "Lieu", salle: "Salle", asso: "Asso", evenement: "Événement", tradition: "Tradition", autre: "Autre" };
   const COST = 30;
-
-  // Cartes inventées pour l'aperçu
-  const DEMO = [
-    ["Le Resto U", "salle", "commune", "🍽️", "Là où tout le monde se retrouve à 12 h 15."],
-    ["Amphi 1", "salle", "commune", "🎓", "Le plus grand amphi, et le plus froid."],
-    ["La Pelouse", "lieu", "commune", "🌱", "Dès qu'il fait beau, elle se remplit."],
-    ["Le Bus du soir", "lieu", "commune", "🚌", "On court toujours pour l'attraper."],
-    ["Salle de projet", "salle", "peu_commune", "💡", "Des post-it partout et un tableau jamais effacé."],
-    ["La Biblio", "lieu", "peu_commune", "📚", "Silence demandé, sauf avant les partiels."],
-    ["Le Foyer", "lieu", "peu_commune", "🛋️", "Canapés, jeux et siestes interdites (mais pratiquées)."],
-    ["Le BDE", "asso", "rare", "🎉", "Il organise tout ce qui rend le campus vivant."],
-    ["Le Gala", "evenement", "rare", "🕺", "Une soirée par an, des mois de préparation."],
-    ["Le toit-terrasse", "lieu", "epique", "🌇", "Le meilleur coucher de soleil, si on connaît le chemin."],
-    ["La nuit des projets", "evenement", "epique", "🌙", "Café, code et dernières minutes."],
-    ["Le spot secret", "lieu", "legendaire", "🗝️", "Presque personne ne sait où il est."]
-  ].map(([name, category, rarity, emoji, description], i) => ({ id: "d" + i, name, category, rarity, emoji, description }));
-
+ 
   // ---------- Petits outils ----------
   const h = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
-
+ 
   const css = `
 :root{--ink:#10252d;--paper:#f5f6f2;--line:#c9d0cb;--signal:#f0b429;--good:#2f9e6b;--bad:#d2493f;--font:"Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",sans-serif}
 *{box-sizing:border-box}
@@ -79,13 +61,13 @@ button:disabled{opacity:.5;cursor:not-allowed}
 @media (prefers-reduced-motion:reduce){.shake{animation:none}.flip .back,.flip .front{transition:none}}`;
   document.head.append(Object.assign(h("style"), { textContent: css }));
   document.head.append(Object.assign(h("link"), { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" }));
-
+ 
   // ---------- Compte ----------
   let S = null; try { S = JSON.parse(localStorage.getItem("wm_s")); } catch {}
   const save = (s) => { S = s; try { s ? localStorage.setItem("wm_s", JSON.stringify(s)) : localStorage.removeItem("wm_s"); } catch {} };
   const mail = (id) => id.includes("@") ? id.trim() : id.trim().toLowerCase() + "@users.wikimaster.app";
   const keep = (j) => save({ token: j.access_token, refresh: j.refresh_token, exp: Date.now() + (j.expires_in || 3600) * 1000 - 60000, id: j.user.id, email: j.user.email });
-
+ 
   async function auth(path, body) {
     const r = await fetch(root + "/auth/v1/" + path, { method: "POST", headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const j = await r.json();
@@ -113,7 +95,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
     if (!r.ok) { let t = ""; try { t = (await r.text()).slice(0, 160); } catch {} throw new Error("HTTP " + r.status + " " + t); }
     return r.status === 204 ? null : r.json();
   }
-
+ 
   function authBox(done, admin) {
     const f = h("form", "box"), id = h("input"), pw = h("input"), msg = h("p", "msg");
     id.placeholder = id.ariaLabel = admin ? "E-mail admin" : "Pseudo"; id.required = true; id.autocomplete = "username";
@@ -130,21 +112,16 @@ button:disabled{opacity:.5;cursor:not-allowed}
     f.append(msg);
     return f;
   }
-
+ 
   // ---------- Cartes ----------
-  let cards = null, demo = true;
+  let cards = null;
   async function loadCards() {
     if (cards) return cards;
-    try {
-      if (!ok) throw 0;
-      const r = await json("/rest/v1/cards?select=*&approved=eq.true&order=name");
-      cards = r.length ? r : null;
-    } catch { cards = null; }
-    demo = !cards;
-    if (demo) cards = DEMO;
+    try { if (!ok) throw 0; cards = await json("/rest/v1/cards?select=*&approved=eq.true&order=name"); }
+    catch { cards = []; }
     return cards;
   }
-
+ 
   function cardEl(c, qty) {
     const d = h("div", "wc"); d.style.setProperty("--rc", RAR[c.rarity][1]);
     const art = h("div", "art");
@@ -155,48 +132,33 @@ button:disabled{opacity:.5;cursor:not-allowed}
     if (qty > 1) d.append(h("b", "qty", "×" + qty));
     return d;
   }
-
-  // ---------- Jetons, collection, booster (mode aperçu = local ; sinon = serveur) ----------
-  const D = () => { try { return JSON.parse(localStorage.getItem("wm_demo")) || { tokens: 100, col: {} }; } catch { return { tokens: 100, col: {} }; } };
-  const saveD = (d) => { try { localStorage.setItem("wm_demo", JSON.stringify(d)); } catch {} };
-
+ 
+  // ---------- Jetons, collection, booster (tout est calculé côté serveur) ----------
   async function me() {
-    if (demo) return { pseudo: "Aperçu", tokens: D().tokens };
     if (!S) return null;
     return (await json("/rest/v1/profiles?select=pseudo,tokens&id=eq." + S.id))[0] || null;
   }
   async function owned() {
-    if (demo) return D().col;
     if (!S) return {};
     const m = {}; (await json("/rest/v1/collection?select=card_id,qty")).forEach((r) => (m[r.card_id] = r.qty));
     return m;
   }
-
-  function pick(rar) {
-    const i = ORDER.indexOf(rar);
-    for (const k of [...ORDER.slice(i), ...ORDER.slice(0, i).reverse()]) {
-      const l = cards.filter((c) => c.rarity === k);
-      if (l.length) return l[Math.floor(Math.random() * l.length)];
+  const open = () => json("/rest/v1/rpc/open_booster", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+ 
+  // Réduit une photo à 1200 px max et la ré-encode en JPEG (retire aussi les données EXIF)
+  async function compress(file) {
+    const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
+    let k = Math.min(1, 1200 / Math.max(bmp.width, bmp.height)), q = 0.82;
+    for (let i = 0; ; i++) {
+      const c = document.createElement("canvas");
+      c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+      c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+      const b = await new Promise((r) => c.toBlob(r, "image/jpeg", q));
+      if (b.size <= 1400000 || i >= 4) return b;
+      q = Math.max(0.5, q - 0.1); k *= 0.85;
     }
   }
-  function drawLocal() {
-    const out = []; let hi = false;
-    for (let i = 0; i < 5; i++) {
-      let r = Math.random() * 100; if (i === 4 && !hi) r = 60 + Math.random() * 40;
-      let acc = 0, rar = "commune";
-      for (const k of ["commune", "peu_commune", "rare", "epique", "legendaire"]) { acc += CHANCE[k]; if (r < acc) { rar = k; break; } }
-      const c = pick(rar); if (c.rarity !== "commune") hi = true; out.push(c);
-    }
-    return out;
-  }
-  async function open() {
-    if (demo) {
-      const d = D(); if (d.tokens < COST) throw new Error("Pas assez de jetons.");
-      d.tokens -= COST; const out = drawLocal(); out.forEach((c) => (d.col[c.id] = (d.col[c.id] || 0) + 1)); saveD(d); return out;
-    }
-    return json("/rest/v1/rpc/open_booster", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
-  }
-
+ 
   // ---------- Barre du haut ----------
   async function header(el) {
     await loadCards();
@@ -207,9 +169,9 @@ button:disabled{opacity:.5;cursor:not-allowed}
     el.append(nav);
     const p = await me().catch(() => null);
     el.append(h("span", "pill", p ? p.pseudo + " · " + p.tokens + " jetons" : "Non connecté"));
-    if (S && !demo) { const b = h("button", "ghost", "Quitter"); b.onclick = () => { save(null); location.reload(); }; el.append(b); }
+    if (S) { const b = h("button", "ghost", "Quitter"); b.onclick = () => { save(null); location.reload(); }; el.append(b); }
     return p;
   }
-
-  return { h, RAR, ORDER, CATS, COST, loadCards, demo: () => demo, header, authBox, cardEl, owned, open, user: () => S, api, json, login };
+ 
+  return { h, RAR, ORDER, CATS, COST, loadCards, compress, header, authBox, cardEl, owned, open, user: () => S, api, json, login };
 })();
