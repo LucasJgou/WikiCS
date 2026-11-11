@@ -5,7 +5,7 @@ const WM = (() => {
   const RAR = { commune: ["Commune", "#8aa0a8"], peu_commune: ["Peu commune", "#2f9e6b"], rare: ["Rare", "#3b82d6"], epique: ["Épique", "#9b59d0"], legendaire: ["Légendaire", "#f0b429"] };
   const ORDER = ["legendaire", "epique", "rare", "peu_commune", "commune"];
   const CATS = { lieu: "Lieu", salle: "Salle", asso: "Asso", evenement: "Événement", tradition: "Tradition", autre: "Autre" };
-  const COST = 30;
+  const COST = 15;
   const CAT_EMO = { lieu: "📍", salle: "🏫", asso: "🤝", evenement: "🎉", tradition: "🎭", autre: "✨" };
 
   // ---------- Petits outils ----------
