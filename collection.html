@@ -42,7 +42,7 @@ async function init() {
   const p = await WM.header($("top"));
   cards = await WM.loadCards();
   $("auth").textContent = "";
-  if (!WM.demo() && !p) { $("content").hidden = true; $("count").textContent = ""; $("auth").append(WM.authBox(init)); return; }
+  if (!p) { $("content").hidden = true; $("count").textContent = ""; $("auth").append(WM.authBox(init)); return; }
   own = await WM.owned();
   const n = cards.filter((c) => own[c.id]).length;
   $("count").textContent = n + " carte" + (n > 1 ? "s" : "") + " sur " + cards.length + " découverte" + (n > 1 ? "s" : "") + ".";
