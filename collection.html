@@ -1,13 +1,6 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<script async src="https://www.googletagmanager.com/gtm.js?id=GTM-5P9NMJ49"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-SSS4EVD5M4');
-</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ma collection – Wikimaster CentraleSupélec</title>
@@ -35,14 +28,13 @@ ORDER.forEach((k) => $("f").append(new Option(RAR[k][0], k)));
 
 function draw() {
   const grid = $("grid"); grid.textContent = "";
-  cards.filter((c) => !$("f").value || c.rarity === $("f").value)
-    .sort((a, b) => ORDER.indexOf(a.rarity) - ORDER.indexOf(b.rarity) || a.name.localeCompare(b.name))
-    .forEach((c) => {
-      if (own[c.id]) return grid.append(WM.cardEl(c, own[c.id]));
-      const g = h("div", "wc lock"); g.style.setProperty("--rc", RAR[c.rarity][1]);
-      g.append(h("span", "emo", "?"), h("h3", "", "Carte inconnue"), h("span", "rar", RAR[c.rarity][0]));
-      grid.append(g);
-    });
+  const list = cards.filter((c) => own[c.id] && (!$("f").value || c.rarity === $("f").value))
+    .sort((a, b) => ORDER.indexOf(a.rarity) - ORDER.indexOf(b.rarity) || a.name.localeCompare(b.name));
+  list.forEach((c) => grid.append(WM.cardEl(c, own[c.id])));
+  if (!list.length) {
+    const p = h("p", "lead", Object.keys(own).length ? "Aucune carte de cette rareté pour l’instant." : "Tu n’as encore aucune carte. Ouvre un booster pour commencer ta collection !");
+    grid.append(p);
+  }
 }
 
 async function init() {
