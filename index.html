@@ -30,12 +30,12 @@
 <main>
   <div id="top"></div>
   <div id="intro">
-    <h1>WikiCS</h1>
+    <h1>Wikimaster</h1>
     <p class="lead">Gagne des jetons en jouant à CSguessr, puis ouvre des boosters pour collectionner les cartes du campus.</p>
   </div>
   <div id="auth"></div>
   <section id="stage" hidden>
-    <button class="pack" id="pack" type="button">WikiCS<small>Booster · 15 jetons</small></button>
+    <button class="pack" id="pack" type="button">Wikimaster<small>Booster · 30 jetons</small></button>
     <p class="count" id="bal"></p>
     <div class="slot" id="slot" hidden></div>
     <p class="count" id="count" aria-live="polite"></p>
@@ -49,7 +49,7 @@
 <script>
 const $ = (id) => document.getElementById(id), { h, ORDER } = WM;
 let busy = false, hand = [], idx = 0, before = {}, seen = {};
-const SUSPENSE = { commune: 250, peu_commune: 350, rare: 600, epique: 900, legendaire: 1300 };
+const SUSPENSE = { secrete: 2200, commune: 250, peu_commune: 350, rare: 600, epique: 900, legendaire: 1300 };
 
 // Vérifie la connexion, affiche les jetons et active (ou non) le booster
 async function refresh() {
@@ -71,13 +71,13 @@ async function refresh() {
 // Une carte à la fois, de la moins rare à la plus rare : la meilleure arrive en dernier
 function showCard() {
   const c = hand[idx], last = idx === hand.length - 1;
-  const f = h("div", "flip" + (c.rarity === "epique" || c.rarity === "legendaire" ? " big" : ""));
+  const f = h("div", "flip" + (["epique", "legendaire", "secrete"].includes(c.rarity) ? " big" : ""));
   const front = h("div", "front"); front.append(WM.cardEl(c));
   if (!before[c.id] && !seen[c.id]) front.append(h("i", "new", "Nouvelle"));
   seen[c.id] = 1;
   f.append(h("div", "back", "?"), front);
   $("slot").textContent = ""; $("slot").append(f);
-  $("count").textContent = (idx + 1) + " / " + hand.length;
+  $("count").textContent = c.rarity === "secrete" ? "✨ Carte secrète ! ✨" : (idx + 1) + " / " + hand.length;
   $("next").hidden = last; $("again").hidden = !last;
   $("next").disabled = true;
   setTimeout(() => {
