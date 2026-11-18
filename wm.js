@@ -2,11 +2,11 @@
 const WM = (() => {
   const ok = typeof SUPABASE_URL === "string" && typeof SUPABASE_KEY === "string" && !SUPABASE_URL.includes("VOTRE-PROJET");
   const root = ok ? SUPABASE_URL.replace(/\/$/, "") : "";
-  const RAR = { commune: ["Commune", "#8aa0a8"], peu_commune: ["Peu commune", "#2f9e6b"], rare: ["Rare", "#3b82d6"], epique: ["Épique", "#9b59d0"], legendaire: ["Légendaire", "#f0b429"] };
-  const ORDER = ["legendaire", "epique", "rare", "peu_commune", "commune"];
-  const CATS = { lieu: "Lieu", salle: "Salle", asso: "Asso", evenement: "Événement", tradition: "Tradition", cours: "Cours", autre: "Autre" };
-  const COST = 15;
-  const CAT_EMO = { lieu: "📍", salle: "🚪", asso: "🤝", evenement: "🎉", tradition: "🎭", cours: "📘", autre: "✨" };
+  const RAR = { commune: ["Commune", "#8aa0a8"], peu_commune: ["Peu commune", "#2f9e6b"], rare: ["Rare", "#3b82d6"], epique: ["Épique", "#9b59d0"], legendaire: ["Légendaire", "#f0b429"], secrete: ["Secrète", "#d4af37"] };
+  const ORDER = ["secrete", "legendaire", "epique", "rare", "peu_commune", "commune"];
+  const CATS = { lieu: "Lieu", salle: "Salle", asso: "Asso", evenement: "Événement", tradition: "Tradition", cours: "Cours", personne: "Personne", autre: "Autre" };
+  const COST = 30;
+  const CAT_EMO = { lieu: "📍", salle: "🚪", asso: "🤝", evenement: "🎉", tradition: "🎭", cours: "📘", personne: "🧑‍🎓", autre: "✨" };
 
   // ---------- Petits outils ----------
   const h = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
@@ -59,7 +59,14 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .flip.on .front{transform:rotateY(0)}
 .flip.on .wc{box-shadow:0 0 28px var(--rc)}
 .new{position:absolute;top:-8px;left:-8px;z-index:2;background:var(--good);color:#fff;font-style:normal;font-weight:800;font-size:.75rem;padding:.2rem .6rem;border-radius:99px}
-@media (prefers-reduced-motion:reduce){.shake{animation:none}.flip .back,.flip .front{transition:none}}`;
+.wc.secret{background:linear-gradient(160deg,#0b0b0b,#1c1608);color:#f3e2a1;border-color:#d4af37;box-shadow:0 0 0 2px #0b0b0b,0 0 18px rgba(212,175,55,.45);overflow:hidden}
+.wc.secret h3{color:#f6dc7a}
+.wc.secret p{color:#d9c88a}
+.wc.secret .art{background:linear-gradient(135deg,#050505,#3a2d0a)}
+.wc.secret .qty{background:#d4af37;color:#0b0b0b}
+.wc.secret::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 35%,rgba(255,236,160,.32) 50%,transparent 65%);background-size:250% 100%;animation:sheen 3s linear infinite;pointer-events:none}
+@keyframes sheen{from{background-position:200% 0}to{background-position:-100% 0}}
+@media (prefers-reduced-motion:reduce){.wc.secret::after{animation:none}.shake{animation:none}.flip .back,.flip .front{transition:none}}`;
   document.head.append(Object.assign(h("style"), { textContent: css }));
   document.head.append(Object.assign(h("link"), { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" }));
 
@@ -124,7 +131,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
   }
 
   function cardEl(c, qty) {
-    const d = h("div", "wc"); d.style.setProperty("--rc", RAR[c.rarity][1]);
+    const d = h("div", "wc" + (c.rarity === "secrete" ? " secret" : "")); d.style.setProperty("--rc", RAR[c.rarity][1]);
     const art = h("div", "art");
     if (c.path || c.url) { const i = h("img"); i.src = c.url || root + "/storage/v1/object/public/cards/" + c.path; i.alt = ""; i.loading = "lazy"; art.append(i); }
     else art.append(h("span", "emo", c.emoji || CAT_EMO[c.category] || "❔"));
