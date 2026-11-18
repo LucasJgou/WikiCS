@@ -38,7 +38,7 @@
 const $ = (id) => document.getElementById(id), { RAR, CATS } = WM;
 let blob = null, url = null;
 Object.entries(CATS).forEach(([k, v]) => $("cat").append(new Option(v, k)));
-Object.entries(RAR).forEach(([k, v]) => $("rar").append(new Option(v[0], k)));
+Object.entries(RAR).filter(([k]) => k !== "secrete").forEach(([k, v]) => $("rar").append(new Option(v[0], k)));
 
 function preview() {
   $("prev").textContent = "";
