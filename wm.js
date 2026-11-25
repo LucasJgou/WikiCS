@@ -66,6 +66,23 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .wc.secret .qty{background:#d4af37;color:#0b0b0b}
 .wc.secret::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 35%,rgba(255,236,160,.32) 50%,transparent 65%);background-size:250% 100%;animation:sheen 3s linear infinite;pointer-events:none}
 @keyframes sheen{from{background-position:200% 0}to{background-position:-100% 0}}
+body{display:flex;flex-direction:column;min-height:100dvh}
+main{flex:1 0 auto;width:100%}
+.foot{width:100%;max-width:980px;margin:0 auto;padding:.9rem 16px max(.9rem,env(safe-area-inset-bottom));border-top:1px solid rgba(245,246,242,.12);text-align:center;font-size:.78rem;line-height:1.5;color:#9fb0aa}
+.linkbtn{background:none;border:0;padding:0;border-radius:4px;color:var(--signal);font:inherit;text-decoration:underline;cursor:pointer}
+.foot .linkbtn{font-size:inherit}
+dialog.credits{background:var(--ink);color:var(--paper);border:1px solid var(--line);border-radius:14px;padding:0;width:min(520px,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow:auto}
+dialog.credits::backdrop{background:rgba(0,0,0,.65)}
+.credits .bar{position:sticky;top:0;z-index:1;display:flex;justify-content:space-between;align-items:center;gap:1rem;padding:1rem 1.2rem .6rem;background:var(--ink)}
+.credits .bar h2{margin:0;font-size:1.4rem;font-weight:800}
+.credits .bar small{display:block;font-weight:600;font-size:.8rem;color:#9fb0aa}
+.credits .body{padding:0 1.2rem 1.2rem}
+.credits h3{margin:1.1rem 0 .5rem;font-size:1rem;color:var(--signal)}
+.credits p{margin:.4rem 0;color:#c3cec9;font-size:.92rem}
+.credits .row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem .8rem;background:rgba(255,255,255,.06);border-radius:12px;padding:.7rem .9rem;margin-bottom:.45rem}
+.credits .row small{display:block;color:#9fb0aa}
+.credits .row a{color:var(--signal)}
+.credits .row a.pill2{background:var(--paper);color:var(--ink);font-weight:800;text-decoration:none;border-radius:10px;padding:.45rem .8rem}
 @media (prefers-reduced-motion:reduce){.wc.secret::after{animation:none}.shake{animation:none}.flip .back,.flip .front{transition:none}}`;
   document.head.append(Object.assign(h("style"), { textContent: css }));
   document.head.append(Object.assign(h("link"), { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" }));
@@ -167,6 +184,75 @@ button:disabled{opacity:.5;cursor:not-allowed}
     }
   }
 
+  // ---------- Infos du projet, pied de page et fenêtre « Crédits » ----------
+  // Pour modifier un texte, un rôle ou un lien : change la ligne correspondante ci-dessous.
+  const INFO = { name: "WikiCS", version: "v1.24", year: 2026 };
+  const TEAM = [
+    ["Lucas Jégou", "Cofondateur", "https://www.linkedin.com/in/lucas-j%C3%A9gou-27ba2831a/"],
+    ["Roman Joly", "Cofondateur", "https://www.linkedin.com/in/roman-joly-0a357444b/"],
+    ["Maxime Maygnan", "Cofondateur", "https://www.linkedin.com/in/maxime-maygnan-412047436/"]
+  ];
+  const TOOLS = [
+    ["Claude (Anthropic)", "Écriture du code du jeu", "https://claude.ai"],
+    ["Leonardo.Ai", "Graphismes et visuels", "https://leonardo.ai"],
+    ["Supabase", "Comptes, base de données et stockage des images", "https://supabase.com"],
+    ["GitHub Pages", "Hébergement du site", "https://pages.github.com"],
+    ["Google Fonts", "Police Bricolage Grotesque (licence SIL Open Font License)", "https://fonts.google.com/specimen/Bricolage+Grotesque"]
+  ];
+  const COPYRIGHT = "© " + INFO.year + " " + INFO.name + " - Créé par Lucas Jégou, Roman Joly et Maxime Maygnan";
+
+  const ext = (text, url, cls) => { const a = h("a", cls || "", text); a.href = url; a.target = "_blank"; a.rel = "noopener noreferrer"; return a; };
+  let creditsDlg = null;
+
+  function buildCredits() {
+    const dlg = h("dialog", "credits"); dlg.setAttribute("aria-labelledby", "credits-title");
+    const bar = h("div", "bar"), t = h("div"), title = h("h2", "", "Crédits"); title.id = "credits-title";
+    t.append(title, h("small", "", INFO.name + " · " + INFO.version + " · " + INFO.year));
+    const x = h("button", "ghost", "Fermer"); x.type = "button"; x.onclick = () => dlg.close();
+    bar.append(t, x);
+
+    const body = h("div", "body");
+    body.append(h("p", "", INFO.name + " est un jeu de cartes à collectionner sur la vie du campus de CentraleSupélec : salles, assos, cours, lieux… Les jetons se gagnent en jouant à CSguessr."));
+
+    body.append(h("h3", "", "Les fondateurs"));
+    TEAM.forEach(([name, role, url]) => {
+      const row = h("div", "row"), who = h("div");
+      who.append(h("strong", "", name), h("small", "", role));
+      row.append(who, ext("LinkedIn", url, "pill2")); body.append(row);
+    });
+    body.append(h("p", "", "Une question, une idée, une carte à signaler ? Écris-nous sur LinkedIn."));
+
+    body.append(h("h3", "", "Outils et ressources"));
+    TOOLS.forEach(([name, what, url]) => {
+      const row = h("div", "row"), who = h("div"), strong = h("strong"); strong.append(ext(name, url));
+      who.append(strong, h("small", "", what)); row.append(who); body.append(row);
+    });
+
+    body.append(h("h3", "", "Contenus et données"));
+    body.append(h("p", "", "Les cartes sont proposées par les joueurs et vérifiées avant d’apparaître dans le jeu. Seuls ton pseudo, tes jetons et ta collection sont enregistrés."));
+    body.append(h("p", "", "Les noms, logos et marques cités appartiennent à leurs propriétaires respectifs."));
+    const j = h("p", "", "Jeu associé : "); j.append(ext("CSguessr", "https://lucasjgou.github.io/CSguessr/"));
+    body.append(j, h("p", "", COPYRIGHT));
+
+    const close = h("button", "", "Fermer"); close.type = "button"; close.style.marginTop = ".8rem"; close.onclick = () => dlg.close();
+    body.append(close);
+    dlg.append(bar, body);
+    dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); });   // clic en dehors = fermer
+    return dlg;
+  }
+  function openCredits() {
+    if (!creditsDlg) { creditsDlg = buildCredits(); document.body.append(creditsDlg); }
+    creditsDlg.showModal();
+  }
+
+  function addFooter() {
+    if (document.querySelector(".foot")) return;
+    const f = h("footer", "foot"), b = h("button", "linkbtn", "Crédits"); b.type = "button"; b.onclick = openCredits;
+    f.append(COPYRIGHT + " · " + INFO.version + " · ", b);
+    document.body.append(f);
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", addFooter); else addFooter();
+
   // ---------- Barre du haut ----------
   async function header(el) {
     await loadCards();
@@ -174,6 +260,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
     const nav = h("nav");
     [["index.html", "Booster"], ["collection.html", "Collection"], ["creer.html", "Proposer une carte"], ["https://lucasjgou.github.io/CSguessr/", "CSguessr"]]
       .forEach(([u, t]) => { const a = h("a", "", t); a.href = u; nav.append(a); });
+    const cb = h("button", "linkbtn", "Crédits"); cb.type = "button"; cb.onclick = openCredits; nav.append(cb);
     el.append(nav);
     const p = await me().catch(() => null);
     el.append(h("span", "pill", p ? p.pseudo + " · " + p.tokens + " jetons" : "Non connecté"));
@@ -181,5 +268,5 @@ button:disabled{opacity:.5;cursor:not-allowed}
     return p;
   }
 
-  return { h, RAR, ORDER, CATS, COST, loadCards, compress, header, authBox, cardEl, owned, open, user: () => S, api, json, login };
+  return { h, RAR, ORDER, CATS, COST, loadCards, compress, header, authBox, cardEl, owned, open, user: () => S, openCredits, api, json, login };
 })();
